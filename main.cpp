@@ -1,64 +1,72 @@
-#include <iostream>
+[Переслано от Dmitry Vasyliev]
+#include <QDebug>
+#include <QObject>
 #include <string>
+#include <thread>
+#include <utility>
 
-class String
-{
-public:
-    String() = default;
-    String(const char* string)
-    {
-        printf("Created!\n");
-        m_Size = strlen(string);
-        m_Data = new char[m_Size];
-        memcpy(m_Data, string, m_Size);
-    }
-
-    String(const String& other)
-    {
-        printf("Copied!\n");
-        m_Size = other.m_Size;
-        m_Data = new char[m_Size];
-        memcpy(m_Data, other.m_Data, m_Size);
-    }
-
-    void Print()
-    {
-        for(uint32_t i = 0; i < m_Size; i++)
-            printf("%c", m_Data[i]);
-        printf("\n");
-
-    }
-
-    ~String(){
-        delete m_Data;
-    }
-
+class Logger : public QObject {
+Q_OBJECT
 private:
-    char* m_Data;
-    uint32_t m_Size;
-
+    Logger(QObject *parent = nullptr) : QObject(parent) {}
+public:
+    static Logger &Instance() {
+        if (sInstance == nullptr) {
+            sInstance = new Logger();
+        }
+        return *sInstance;
+    }
+public slots:
+    void log(const std::string &msg) const {
+        qDebug() << msg.c_str();
+    };
+protected:
+    static Logger *sInstance;
 };
 
-class Entity{
+class Downloader : public QObject {
+Q_OBJECT
 public:
-    Entity(const String& name)
-            : m_Name(name)
-    {
+    Downloader(std::string mName, QObject *parent = nullptr) : QObject(parent), mName(std::move(mName)) {
+        QObject::connect(
+                this, &Downloader::downloadStarted,
+                &Logger::Instance(), []() {
+                    Logger::Instance().log("Download Started:");
+                }
+        );
 
+        QObject::connect(
+                this, &Downloader::downloadFinished,
+                &Logger::Instance(), []() {
+                    Logger::Instance().log("Download Finished:");
+                }
+        );
     }
+public:
+    void download() {
+        emit downloadStarted();
 
-    void PrintName()
-    {
-        m_Name.Print();
+        using namespace std::literals;
+        std::this_thread::sleep_for(5s);
+
+        emit downloadFinished();
     }
+public slots:
+signals:
+    void downloadStarted();
+    void downloadFinished();
 private:
-    String m_Name;
+    std::string mName;
 };
 
-int main()
-{
-    Entity entity(String("Bond"));
-    entity.PrintName();
+Logger *Logger::sInstance = nullptr;
 
-    std::cin.get();
+int main(int argc, char *argv[]) {
+    Logger::Instance().log("App started!");
+    Downloader downloader("Book");
+    downloader.download();
+
+    return 0;
 }
+
+#include "main.moc"
