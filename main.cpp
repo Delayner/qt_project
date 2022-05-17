@@ -1,92 +1,64 @@
-#include <QObject>
-#include <QDebug>
-#include <thread>
+#include <iostream>
 #include <string>
 
-class Logger : public QObject {
-Q_OBJECT
+class String
+{
+public:
+    String() = default;
+    String(const char* string)
+    {
+        printf("Created!\n");
+        m_Size = strlen(string);
+        m_Data = new char[m_Size];
+        memcpy(m_Data, string, m_Size);
+    }
+
+    String(const String& other)
+    {
+        printf("Copied!\n");
+        m_Size = other.m_Size;
+        m_Data = new char[m_Size];
+        memcpy(m_Data, other.m_Data, m_Size);
+    }
+
+    void Print()
+    {
+        for(uint32_t i = 0; i < m_Size; i++)
+            printf("%c", m_Data[i]);
+        printf("\n");
+
+    }
+
+    ~String(){
+        delete m_Data;
+    }
 
 private:
-    Logger(QObject *parent = nullptr) : QObject(parent) {}
-
-public:
-    static Logger &Instance(){
-        if (sInstance == nullptr) {
-            sInstance = new Logger();
-        }
-        return *sInstance;
-    }
-public slots:
-    void log (const std::string &msg) const {
-        qDebug() << msg.c_str();
-    }
-
-protected:
-    static Logger *sInstance;
-};
-
-class Bot : public QObject {
-Q_OBJECT
-public:
-    Bot(std::string mName, QObject *parent = nullptr) : QObject(parent), mName(std::move(mName)){
-        QObject::connect(
-                this, &Bot::sayFirst,
-                &Logger::Instance(), []() {
-                    Logger::Instance().log("Hey, yo! What's up, bro?");
-                }
-        );
-
-        QObject::connect(
-                this, &Bot::saySecond,
-                &Logger::Instance(), []() {
-                    Logger::Instance().log("Ohhh! You are so ugly, maaaan!");
-                }
-        );
-
-        QObject::connect(
-                this, &Bot::sayThird,
-                &Logger::Instance(), []() {
-                    Logger::Instance().log("Get out of there, NIGGA!!!");
-                }
-
-        );
-    }
-public:
-    void say(){
-
-        using namespace std::literals;
-        std::this_thread::sleep_for(3s);
-
-        emit sayFirst();
-
-        std::this_thread::sleep_for(3s);
-
-        emit saySecond();
-
-        std::this_thread::sleep_for(3s);
-
-        emit sayThird();
-    }
-
-public slots:
-signals:
-    void sayFirst();
-    void saySecond();
-    void sayThird();
-
-private:
-    std::string mName;
+    char* m_Data;
+    uint32_t m_Size;
 
 };
 
-Logger *Logger::sInstance = nullptr;
+class Entity{
+public:
+    Entity(const String& name)
+            : m_Name(name)
+    {
 
-int main (int argc, char *argv []) {
-    Logger::Instance().log("Bot started!\n");
-    Bot bot("Scot");
-    bot.say();
+    }
 
-    return 0;
+    void PrintName()
+    {
+        m_Name.Print();
+    }
+private:
+    String m_Name;
+};
+
+int main()
+{
+    Entity entity(String("Bond"));
+    entity.PrintName();
+
+    std::cin.get();
 }
-
-#include "main.moc"
